@@ -201,7 +201,7 @@ impl App {
             .collect::<HashMap<Piece, Texture>>()
     }
 
-    /// Returns which cell the mouse is in
+    /// Gives the tile the mouse is on 
     fn on_tile(&self) -> (i16, i16) {
         (
             (self.mouse_pos[0] / GRID_CELL_SIZE.0 as f64).floor() as i16, 
