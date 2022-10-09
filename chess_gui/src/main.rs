@@ -249,7 +249,8 @@ fn main() {
             app.left_click = true;
         }
         if let Some(Button::Mouse(MouseButton::Left)) = e.release_args() {
-            // If a piece is being moved
+            // Follows the piece when selected
+            //Now with hold
             if let Some(pos) = app.move_piece {
                 let mouse_pos = app.on_tile();
                 
