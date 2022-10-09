@@ -10,7 +10,7 @@ extern crate piston;
 
 use std::collections::HashMap;
 
-use chess_template::{Colour, Game, Piece, PieceType};
+use chess_template::{Colour, Game, PieceType, Piece, Position, GameState};
 
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, GlyphCache, OpenGL, Texture, TextureSettings};
@@ -26,7 +26,7 @@ const GRID_CELL_SIZE: (i16, i16) = (90, 90);
 
 /// Size of the application window.
 const SCREEN_SIZE: (f32, f32) = (
-    GRID_SIZE as f32 * GRID_CELL_SIZE.0 as f32,
+    GRID_SIZE as f32 * GRID_CELL_SIZE.0 as f32 + 340.0,
     GRID_SIZE as f32 * GRID_CELL_SIZE.1 as f32,
 );
 
@@ -56,76 +56,118 @@ impl App {
             move_piece: None,
         }
     }
+
     fn render(&mut self, args: &RenderArgs, glyphs: &mut GlyphCache) {
         use graphics::*; // Now we don't have to use this everytime :D
 
         let square = rectangle::square(0.0, 0.0, GRID_CELL_SIZE.0 as f64);
+        let board = self.game.get_board();
+        let mouse_position = self.on_tile();
 
         self.gl.draw(args.viewport(), |c, gl| {
-            // Clear the screen.
+            //clear the screen
+            clear([0.0, 0.127, 0.256, 0.52], gl);
             // clear(GREEN, gl);
-            // draw grid
+            // Draw grid
             for row in 0..8 {
                 for col in 0..8 {
-                    // draw tile
                     rectangle(
                         match col % 2 {
                             0 => {
                                 if row % 2 == 0 {
-                                    WHITE
-                                } else {
                                     BLACK
+                                } else {
+                                    WHITE
                                 }
                             }
                             _ => {
                                 if row % 2 == 0 {
-                                    BLACK
-                                } else {
                                     WHITE
+                                } else {
+                                    BLACK
                                 }
                             }
                         },
                         square,
                         c.transform.trans(
                             (col * GRID_CELL_SIZE.0) as f64,
-                            (row * GRID_CELL_SIZE.0) as f64,
+                            (row * GRID_CELL_SIZE.1) as f64,
                         ),
                         gl,
                     );
 
-                    // draw piece
-                    let board = self.game.get_board(); 
+                }
+            }
+
+            // Draw pieces
+            // I have to rewrite the for loops otherwise the white pices go under
+            for row in 0..8 {
+                for col in 0..8 {
                     if let Some(piece) = board[(row * 8 + col) as usize] {
                         let img = Image::new().rect(square);
 
+                        let correct_tile = mouse_position == (col, row);
+                        let piece_moving = self.move_piece.is_some() && self.move_piece.unwrap() == (col, row);
                         
-                        
-
-                        img.draw(
-                            self.sprites.get(&piece).unwrap(),
-                            &c.draw_state,
-                            c.transform.trans(
-                                (col * GRID_CELL_SIZE.0) as f64,
-                                (row * GRID_CELL_SIZE.0) as f64,
-                            ),
-                            gl,
-                        )
+                        if (self.left_click && correct_tile) || piece_moving { 
+                            self.left_click = false;
+                            self.move_piece = Some((col, row));                     
+                            
+                            // Follow mouse
+                            img.draw(
+                                self.sprites.get(&piece).unwrap(),
+                                &c.draw_state,
+                                c.transform.trans(
+                                    self.mouse_pos[0] - GRID_CELL_SIZE.0 as f64 / 2.0,
+                                    self.mouse_pos[1] - GRID_CELL_SIZE.1 as f64 / 2.0,
+                                ),
+                                gl,
+                            );
+                        } else {
+                            img.draw(
+                                self.sprites.get(&piece).unwrap(),
+                                &c.draw_state,
+                                c.transform.trans(
+                                    (col * GRID_CELL_SIZE.0) as f64,
+                                    (row * GRID_CELL_SIZE.0) as f64,
+                                ),
+                                gl,
+                            );
+                        }
                     }
                 }
             }
 
-            // Draw text
-            // We do some calculations to center the text
-            // Is not exactly in the middle, try to fix it if you want to!
-            let state_text = format!("The game is {:?}", self.game.get_game_state());
-            let text_size: (f32, f32) = ((24 * state_text.len()) as f32, 24f32);
-            let text_postition = c.transform.trans(
-                ((SCREEN_SIZE.0 - text_size.0) / 2f32) as f64,
-                ((SCREEN_SIZE.1 - text_size.1) / 2f32) as f64,
+            // Game state
+            let state_text = format!("Game state: {:?}", self.game.get_game_state());
+            let state_text_postition = c.transform.trans(
+                (SCREEN_SIZE.0 - 320.0) as f64,
+                (SCREEN_SIZE.1 - 10.0) as f64,
             );
-            text::Text::new(32)
-                .draw(&state_text, glyphs, &c.draw_state, text_postition, gl)
-                .unwrap();
+            Text::new_color([0.01, 0.500, 0.334, 0.8], 24)
+            .draw(&state_text, glyphs, &c.draw_state, state_text_postition, gl).unwrap();
+            
+            //Player turn
+            let turn_text = format!("Turn: {:?}", self.game.get_active_colour());
+            let turn_text_postition = c.transform.trans(
+            (SCREEN_SIZE.0 - 320.0) as f64,
+            (SCREEN_SIZE.1 - 40.0) as f64,
+            );
+            Text::new_color([0.01, 0.500, 0.334, 0.8], 24)
+            .draw(&turn_text, glyphs, &c.draw_state, turn_text_postition, gl).unwrap();
+            
+            // Announce winner
+            if self.game.get_game_state() == GameState::GameOver {
+                let gameover_text = format!("{:?} is the winner,\n and the winner takes it all!", self.game.get_active_colour());
+                let gameover_text_size: (f32, f32) = ((22 * gameover_text.len()) as f32, 24.0);
+                let gameover_text_postition = c.transform.trans(
+                    (SCREEN_SIZE.0 / 2.0 - gameover_text_size.0 / 2.0) as f64,
+                    (SCREEN_SIZE.1 / 2.0 - gameover_text_size.1 / 2.0) as f64,
+                );
+                Text::new_color([0.01, 0.500, 0.334, 0.8], 45)
+                    .draw(&gameover_text, glyphs, &c.draw_state, gameover_text_postition, gl).unwrap();
+            }
+
         });
     }
 
@@ -134,29 +176,37 @@ impl App {
     }
 
     #[rustfmt::skip]
-    /// Loads chess piese images into vector.
+    /// Loads chess piceses images into vector.
     fn load_sprites() -> HashMap<Piece, Texture> {
         use Colour::*;
         use PieceType::*;
         [
-            (Piece { colour: Black, piece_type: King}, "resources/black_king.png".to_string()),
-            (Piece { colour: Black, piece_type: Queen}, "resources/black_queen.png".to_string()),
-            (Piece { colour: Black, piece_type: Rook}, "resources/black_rook.png".to_string()),
-            (Piece { colour: Black, piece_type: Pawn}, "resources/black_pawn.png".to_string()),
-            (Piece { colour: Black, piece_type: Bishop}, "resources/black_bishop.png".to_string()),
-            (Piece { colour: Black, piece_type: Knight}, "resources/black_knight.png".to_string()),
-            (Piece { colour: White, piece_type: King}, "resources/white_king.png".to_string()),
-            (Piece { colour: White, piece_type: Queen}, "resources/white_queen.png".to_string()),
-            (Piece { colour: White, piece_type: Rook}, "resources/white_rook.png".to_string()),
-            (Piece { colour: White, piece_type: Pawn}, "resources/white_pawn.png".to_string()),
-            (Piece { colour: White, piece_type: Bishop}, "resources/white_bishop.png".to_string()),
-            (Piece { colour: White, piece_type: Knight}, "resources/white_knight.png".to_string())
+            (Piece { colour: Black, piece_type: King }, "resources/black_king.png".to_string()),
+            (Piece { colour: Black, piece_type: Queen }, "resources/black_queen.png".to_string()),
+            (Piece { colour: Black, piece_type: Rook }, "resources/black_rook.png".to_string()),
+            (Piece { colour: Black, piece_type: Pawn }, "resources/black_pawn.png".to_string()),
+            (Piece { colour: Black, piece_type: Bishop }, "resources/black_bishop.png".to_string()),
+            (Piece { colour: Black, piece_type: Knight }, "resources/black_knight.png".to_string()),
+            (Piece { colour: White, piece_type: King }, "resources/white_king.png".to_string()),
+            (Piece { colour: White, piece_type: Queen }, "resources/white_queen.png".to_string()),
+            (Piece { colour: White, piece_type: Rook }, "resources/white_rook.png".to_string()),
+            (Piece { colour: White, piece_type: Pawn }, "resources/white_pawn.png".to_string()),
+            (Piece { colour: White, piece_type: Bishop }, "resources/white_bishop.png".to_string()),
+            (Piece { colour: White, piece_type: Knight }, "resources/white_knight.png".to_string())
         ]
             .iter()
             .map(|(piece, path)| {
                 (*piece, Texture::from_path(path, &TextureSettings::new()).unwrap())
             })
             .collect::<HashMap<Piece, Texture>>()
+    }
+
+    /// Returns which cell the mouse is in
+    fn on_tile(&self) -> (i16, i16) {
+        (
+            (self.mouse_pos[0] / GRID_CELL_SIZE.0 as f64).floor() as i16, 
+            (self.mouse_pos[1] / GRID_CELL_SIZE.1 as f64).floor() as i16
+        )
     }
 }
 
@@ -196,7 +246,19 @@ fn main() {
             app.mouse_pos = pos;
         }
         if let Some(Button::Mouse(MouseButton::Left)) = e.press_args() {
-            // Handle mouse press
+            app.left_click = true;
+        }
+        if let Some(Button::Mouse(MouseButton::Left)) = e.release_args() {
+            // If a piece is being moved
+            if let Some(pos) = app.move_piece {
+                let mouse_pos = app.on_tile();
+                
+                let from = Position::new(pos.1 as usize, pos.0 as usize).ok().unwrap();
+                let to = Position::new(mouse_pos.1 as usize, mouse_pos.0 as usize).ok().unwrap();
+
+                app.game.make_move_pos(from, to);
+                app.move_piece = None;
+            }
         }
     }
 }
