@@ -99,6 +99,10 @@ impl App {
                 }
             }
 
+
+
+
+
             // Draw pieces
             // I have to rewrite the for loops otherwise the white pices go under
             for row in 0..8 {
@@ -141,38 +145,38 @@ impl App {
 
             //Player turn
             let turn_text = format!("Turn: {:?}", self.game.get_active_colour());
-            let turn_text_postition = c.transform.trans(
+            let turn_text_pos = c.transform.trans(
             (SCREEN_SIZE.0 - 320.0) as f64,
             (SCREEN_SIZE.1 - 40.0) as f64,
             );
             Text::new_color([0.01, 0.500, 0.334, 0.8], 24)
-            .draw(&turn_text, glyphs, &c.draw_state, turn_text_postition, gl).unwrap();
+            .draw(&turn_text, glyphs, &c.draw_state, turn_text_pos, gl).unwrap();
 
             //Game state
-            let state_text = format!("Game state: {:?}", self.game.get_game_state());
-            let state_text_postition = c.transform.trans(
+            let gstate_text = format!("Game state: {:?}", self.game.get_game_state());
+            let gstate_text_pos = c.transform.trans(
                 (SCREEN_SIZE.0 - 320.0) as f64,
                 (SCREEN_SIZE.1 - 10.0) as f64,
             );
             Text::new_color([0.01, 0.500, 0.334, 0.8], 24)
-            .draw(&state_text, glyphs, &c.draw_state, state_text_postition, gl).unwrap();
+            .draw(&gstate_text, glyphs, &c.draw_state, gstate_text_pos, gl).unwrap();
             
             // Announce winner
             if self.game.get_game_state() == GameState::GameOver {
                 let gameover_text = format!("{:?} is the winner,\n and the winner takes it all!", self.game.get_active_colour());
                 let gameover_text_size: (f32, f32) = ((22 * gameover_text.len()) as f32, 24.0);
-                let gameover_text_postition = c.transform.trans(
+                let gameover_text_pos = c.transform.trans(
                     (SCREEN_SIZE.0 / 2.0 - gameover_text_size.0 / 2.0) as f64,
                     (SCREEN_SIZE.1 / 2.0 - gameover_text_size.1 / 2.0) as f64,
                 );
                 Text::new_color([0.01, 0.500, 0.334, 0.8], 45)
-                    .draw(&gameover_text, glyphs, &c.draw_state, gameover_text_postition, gl).unwrap();
+                    .draw(&gameover_text, glyphs, &c.draw_state, gameover_text_pos, gl).unwrap();
             }
 
         });
     }
 
-    fn update(&mut self, args: &UpdateArgs) {
+    fn update(&mut self, _args: &UpdateArgs) {
         // Currently empty, but maybe you can find a fun use for it!
     }
 
@@ -252,15 +256,11 @@ fn main() {
         if let Some(Button::Mouse(MouseButton::Left)) = e.release_args() {
             // Follows the piece when selected
             //Now with hold
-            if let Some(pos) = app.move_piece {
-                let mouse_pos = app.on_tile();
-                
-                let from = Position::new(pos.1 as usize, pos.0 as usize).ok().unwrap();
-                let to = Position::new(mouse_pos.1 as usize, mouse_pos.0 as usize).ok().unwrap();
-
-                app.game.make_move_pos(from, to);
+            if let Some(_pos) = app.move_piece {
+                let _mouse_pos = app.on_tile();
                 app.move_piece = None;
             }
+
         }
     }
 }
