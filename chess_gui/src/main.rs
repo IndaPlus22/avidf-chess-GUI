@@ -138,15 +138,7 @@ impl App {
                 }
             }
 
-            // Game state
-            let state_text = format!("Game state: {:?}", self.game.get_game_state());
-            let state_text_postition = c.transform.trans(
-                (SCREEN_SIZE.0 - 320.0) as f64,
-                (SCREEN_SIZE.1 - 10.0) as f64,
-            );
-            Text::new_color([0.01, 0.500, 0.334, 0.8], 24)
-            .draw(&state_text, glyphs, &c.draw_state, state_text_postition, gl).unwrap();
-            
+
             //Player turn
             let turn_text = format!("Turn: {:?}", self.game.get_active_colour());
             let turn_text_postition = c.transform.trans(
@@ -155,6 +147,15 @@ impl App {
             );
             Text::new_color([0.01, 0.500, 0.334, 0.8], 24)
             .draw(&turn_text, glyphs, &c.draw_state, turn_text_postition, gl).unwrap();
+
+            //Game state
+            let state_text = format!("Game state: {:?}", self.game.get_game_state());
+            let state_text_postition = c.transform.trans(
+                (SCREEN_SIZE.0 - 320.0) as f64,
+                (SCREEN_SIZE.1 - 10.0) as f64,
+            );
+            Text::new_color([0.01, 0.500, 0.334, 0.8], 24)
+            .draw(&state_text, glyphs, &c.draw_state, state_text_postition, gl).unwrap();
             
             // Announce winner
             if self.game.get_game_state() == GameState::GameOver {
