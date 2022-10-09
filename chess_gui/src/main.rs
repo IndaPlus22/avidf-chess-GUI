@@ -258,7 +258,11 @@ fn main() {
             //Now with hold
             if let Some(_pos) = app.move_piece {
                 let _mouse_pos = app.on_tile();
+                let from = Position::new(_pos.1 as usize, _pos.0 as usize).ok().unwrap();
+                let to = Position::new(_mouse_pos.1 as usize, _mouse_pos.0 as usize).ok().unwrap();
+                app.game.make_move_pos(from, to);
                 app.move_piece = None;
+                
             }
 
         }
